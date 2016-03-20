@@ -1,1 +1,1 @@
-# cppJson
+# cppJsonmainly to design a json for cpp APIduring 1 week , I will finish first versionduring 2 weeks , I will finish second versionAnd then I will mod it , until I satisfact;fighting

@@ -1,0 +1,14 @@
+{
+    'pro':{
+        'ver':'0.1.0',
+        'configA':'value'
+    },
+    'dev':{
+        'ver':'0.1.12',
+        'configA':'value'
+    },
+    'test'{
+        'ver','0.1.32',
+        'configA':'value'
+    }
+}

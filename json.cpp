@@ -159,6 +159,7 @@ void JsonArray::operator<<(Ctrl_Json &c) {
     }
     c.str.erase(c.str.begin());
 }
+/////hello
 void JsonString::operator<<(Ctrl_Json &c) {
     auto i = c.str.begin() + 1;
     while (i != c.str.end() && (*i != '\"' && *i != '\'')){

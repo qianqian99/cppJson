@@ -1,1 +1,1 @@
-# cppJsonmainly to design a json for cpp APIduring 1 week , I will finish first versionduring 2 weeks , I will finish second versionAnd then I will mod it , until I satisfact;fighting
+# cppJson自己写的JSON解析包括组装，cpp版本基本完成只是没有封装的接口

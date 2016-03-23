@@ -1,10 +1,3 @@
-/*************************************************************************
- > File Name: json.cpp
- > What I should do is fighting !!! 
- > hgg 
- > Created Time: 2016年03月20日 星期日 09时39分41秒
- ************************************************************************/
-
 #include <iostream>
 #include <iterator>
 #include <list>
@@ -14,6 +7,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string>
+
 enum JsonType{
     String,
     Int,
@@ -31,23 +25,19 @@ class Ctrl_Json{
         ~Ctrl_Json(){}
         void skip_space();
         Json *parse_json();
-        std::string produce_json();
         template <typename T>
         Json *mk_item(T &&v);
         void display() const;
-        int &get_int() ;
-        std::string &get_string() ;
-        std::list<Json *> &get_array() ;
-        std::list<std::pair<std::string, Json *>> &get_object();
+        Json *get_json_ptr() {return cppjson;}
 };
 bool Ctrl_Json::first = true;
 class Json{
-    protected:
         friend  Ctrl_Json;
     public:
         virtual ~Json(){};
         virtual void operator << (Ctrl_Json &c) =0;
         virtual JsonType get_type() const =0 ;
+        virtual void *get_data() =0;
         virtual void show() const=0;
 };
 class JsonInt : public Json{
@@ -60,6 +50,7 @@ class JsonInt : public Json{
         virtual JsonType get_type() const{return Int;}
         void operator << (Ctrl_Json &c) override;
         virtual void show() const override;
+        virtual void *get_data() {return &data;};
 };
 class JsonString : public Json{
     private:
@@ -70,6 +61,7 @@ class JsonString : public Json{
         virtual ~JsonString(){}
         virtual JsonType get_type() const{return String;}
         virtual void show() const;
+        virtual void *get_data() {return &data;};
         std::string string_data(){
             return data;
         }
@@ -83,6 +75,7 @@ class JsonObject : public Json{
         virtual ~JsonObject(){}
         virtual JsonType get_type() const{return Object;}
         void operator << (Ctrl_Json &c) override;
+        virtual void *get_data() {return &data;};
         virtual void show() const;
 };
 class JsonArray : public Json{
@@ -95,9 +88,9 @@ class JsonArray : public Json{
         virtual JsonType get_type() const{return Array;}
         void operator << (Ctrl_Json &c) override;
         virtual void show() const;
+        virtual void *get_data() {return &data;};
 };
 ////////////////////////////////////////////////////////////
-//Simple show 
 void JsonInt::show() const{
     std::cout << data << std::endl;
 }
@@ -117,9 +110,7 @@ void JsonObject::show() const{
     }
 }
 ////////////////////////////////////////////////////////////
-//Chnage string to value
 void JsonObject::operator<<(Ctrl_Json &c){
-    char buff[256] = "";
     c.str.erase(c.str.begin());
     char ch = c.str.front();
     std::string tmp;
@@ -159,7 +150,6 @@ void JsonArray::operator<<(Ctrl_Json &c) {
     }
     c.str.erase(c.str.begin());
 }
-/////hello
 void JsonString::operator<<(Ctrl_Json &c) {
     auto i = c.str.begin() + 1;
     while (i != c.str.end() && (*i != '\"' && *i != '\'')){
@@ -179,7 +169,6 @@ void JsonInt::operator<<(Ctrl_Json &c) {
     c.str.erase(c.str.begin(), i);
 }
 /////////////////////////////////////////////
-//Total parsing
 template <typename T>
 Json* Ctrl_Json::mk_item(T &&v){
     Json &p = *new T(v);
@@ -215,32 +204,70 @@ Json *Ctrl_Json::parse_json(){
         skip_space();
         return nullptr;
     }
-    else {
+    else if (ch == ':'){
         return nullptr;
     }
+    else {
+        std::cout << "error\n" << std::endl;
+        exit(-1);
+    }
 }
-/////////////////////////////////////////////////////////
-// From here to get data
-int &Ctrl_Json::get_int() {
-    return static_cast<JsonInt *>(cppjson)->data;
-}
-std::string &Ctrl_Json::get_string() {
-    return static_cast<JsonString *>(cppjson)->data;
-}
-
-std::list<Json *> &Ctrl_Json::get_array() {
-    return static_cast<JsonArray *>(cppjson)->data;
-}
-std::list<std::pair<std::string, Json *>> &Ctrl_Json::get_object() {
-    return static_cast<JsonObject *>(cppjson)->data;
-}
-//////////////////////////////////////////////////////////////
 void Ctrl_Json::display() const{
     if (cppjson != nullptr){
         cppjson->show();
     }
 }
-/////////////////////////////////////////////////////////
+//////////////////////////////////////////////////
+class Factory{
+    private:
+        std::string res;
+    public:
+        Factory() : res(""){}
+        ~Factory(){}
+        void produce_json(Json *);
+        std::string &get_res(){return res;}
+        void deal_object(Json *);
+        void deal_array(Json *);
+};
+
+void Factory::produce_json(Json *ptr){
+    switch(ptr->get_type()){    
+        case Int:  
+            res += std::to_string(*static_cast<int *>(ptr->get_data())); 
+            break;
+        case String: res += "\""; 
+                     res += *(static_cast<std::string *>(ptr->get_data()));
+                     res += "\""; 
+                     break;
+        case Object:deal_object(ptr);break;
+        case Array:deal_array(ptr);break;
+        default:break;
+    }
+}
+void Factory::deal_array(Json *ptr){
+    res += "[";    
+    auto _list = static_cast<std::list<Json *>*>(ptr->get_data());
+    for (auto e : *_list){
+        produce_json(e);
+        res += ",";
+    }
+    res += "]";
+}
+void Factory::deal_object(Json *ptr){
+    res += "{";
+    auto _list = static_cast<std::list<std::pair<std::string, Json *>> *>(ptr->get_data());
+    for (auto i=_list->begin(); i!=_list->end(); ++i){
+        res += "\"";
+        res += i->first;
+        res += "\"";
+        res += ":";
+        produce_json(i->second);
+        res += ",";
+    }
+    res.pop_back();
+    res += "}";
+}
+//////////////////////////////////////////////////////
 int main(){
     int fd = open("./file.json", O_RDONLY);
     if (fd != -1){
@@ -248,7 +275,10 @@ int main(){
         read(fd, buff, 1023);
         Ctrl_Json json(buff);
         json.parse_json();
+        Factory fa;
+        fa.produce_json(json.get_json_ptr());
         json.display();
+        std::cout << fa.get_res() << std::endl;
     }
     close(fd);
     return 0;
